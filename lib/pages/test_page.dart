@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../data/typing_tests.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../data/typing_tests.dart';
 import '../data/results_storage.dart';
 
 class TestPage extends StatefulWidget {
@@ -13,15 +13,24 @@ class TestPage extends StatefulWidget {
 
 class _TestPageState extends State<TestPage> {
   final TextEditingController _controller = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
+
+  static const int _totalCountdownSeconds = 120;
 
   Timer? _timer;
-  int _elapsedSeconds = 0;
+  int _remainingSeconds = _totalCountdownSeconds;
   int _currentTestIndex = 0;
   int _score = 0;
+  int _correctCharactersTyped = 0;
   String resultMessage = '';
   bool _isFinished = false;
+  bool _resultSaved = false;
 
   TypingTestItem get currentTest => typingTests[_currentTestIndex];
+
+  int get _usedSeconds => _totalCountdownSeconds - _remainingSeconds;
+
+  int get _currentTestNumber => _currentTestIndex + 1;
 
   @override
   void initState() {
@@ -31,10 +40,14 @@ class _TestPageState extends State<TestPage> {
 
   void _startTimer() {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!_isFinished) {
+      if (_isFinished) return;
+
+      if (_remainingSeconds > 1) {
         setState(() {
-          _elapsedSeconds++;
+          _remainingSeconds--;
         });
+      } else {
+        _finishTest('Time is up.');
       }
     });
   }
@@ -55,6 +68,7 @@ class _TestPageState extends State<TestPage> {
       'November',
       'December',
     ];
+
     final hour = now.hour > 12
         ? now.hour - 12
         : now.hour == 0
@@ -62,6 +76,7 @@ class _TestPageState extends State<TestPage> {
         : now.hour;
     final minute = now.minute.toString().padLeft(2, '0');
     final period = now.hour >= 12 ? 'pm' : 'am';
+
     return '${months[now.month - 1]} ${now.day}, ${now.year}  $hour:$minute$period';
   }
 
@@ -73,6 +88,42 @@ class _TestPageState extends State<TestPage> {
 
   String _normalizeText(String text) {
     return text.trim().replaceAll(RegExp(r'\s+'), ' ');
+  }
+
+  double _calculateWpm() {
+    final minutes = _usedSeconds / 60;
+    if (minutes <= 0) return 0;
+    return (_correctCharactersTyped / 5) / minutes;
+  }
+
+  Future<void> _saveResultIfNeeded() async {
+    if (_resultSaved) return;
+    _resultSaved = true;
+
+    await ResultsStorage.saveResult(
+      TestResult(
+        score: _score,
+        totalItems: typingTests.length,
+        elapsedSeconds: _usedSeconds,
+        wpm: _calculateWpm(),
+        dateTime: DateTime.now(),
+      ),
+    );
+  }
+
+  Future<void> _finishTest(String message) async {
+    if (_isFinished) return;
+
+    setState(() {
+      _isFinished = true;
+      resultMessage = message;
+      if (_remainingSeconds < 0) {
+        _remainingSeconds = 0;
+      }
+    });
+
+    _timer?.cancel();
+    await _saveResultIfNeeded();
   }
 
   Widget _buildTypingProgressText() {
@@ -117,62 +168,39 @@ class _TestPageState extends State<TestPage> {
     );
   }
 
-  final FocusNode _focusNode = FocusNode();
-
-  void _submitTest() async {
+  Future<void> _submitTest() async {
     if (_isFinished) return;
 
     final typedText = _normalizeText(_controller.text);
     final targetText = _normalizeText(currentTest.sentence);
 
     if (typedText == targetText) {
+      _correctCharactersTyped += targetText.length;
+
       if (_currentTestIndex < typingTests.length - 1) {
         setState(() {
           _score++;
           _currentTestIndex++;
           resultMessage = 'Correct! Proceed to the next test.';
           _controller.clear();
-          _focusNode.requestFocus();
         });
+        _focusNode.requestFocus();
       } else {
         setState(() {
           _score++;
-          _isFinished = true;
           resultMessage = 'You finished all 10 typing tests.';
         });
-        _timer?.cancel();
-
-        await ResultsStorage.saveResult(
-          TestResult(
-            score: _score,
-            totalItems: typingTests.length,
-            elapsedSeconds: _elapsedSeconds,
-            dateTime: DateTime.now(),
-          ),
-        );
+        await _finishTest('You finished all 10 typing tests.');
       }
     } else {
       setState(() {
-        resultMessage = 'Typed text does not match. \n Please try again.';
+        resultMessage = 'Typed text does not match.\nPlease try again.';
       });
     }
   }
 
-  void _endTest() async {
-    setState(() {
-      _isFinished = true;
-      resultMessage = 'Test ended.';
-    });
-    _timer?.cancel();
-
-    await ResultsStorage.saveResult(
-      TestResult(
-        score: _score,
-        totalItems: typingTests.length,
-        elapsedSeconds: _elapsedSeconds,
-        dateTime: DateTime.now(),
-      ),
-    );
+  Future<void> _endTest() async {
+    await _finishTest('Test ended.');
   }
 
   @override
@@ -185,7 +213,7 @@ class _TestPageState extends State<TestPage> {
 
   @override
   Widget build(BuildContext context) {
-    final testNumber = _currentTestIndex + 1;
+    final wpm = _calculateWpm().toStringAsFixed(1);
 
     return Scaffold(
       body: Container(
@@ -209,16 +237,13 @@ class _TestPageState extends State<TestPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Image.asset('assets/images/keys_logo_title.png', height: 65),
-
                 const SizedBox(height: 50),
-
                 Expanded(
                   child: _isFinished
                       ? Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const SizedBox(height: 120),
-
+                            const SizedBox(height: 100),
                             Center(
                               child: Text(
                                 'Well Done!',
@@ -234,9 +259,7 @@ class _TestPageState extends State<TestPage> {
                                 ),
                               ),
                             ),
-
                             const SizedBox(height: 4),
-
                             Center(
                               child: Text(
                                 _formatDateTime(),
@@ -247,9 +270,7 @@ class _TestPageState extends State<TestPage> {
                                 ),
                               ),
                             ),
-
                             const SizedBox(height: 30),
-
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
@@ -258,7 +279,7 @@ class _TestPageState extends State<TestPage> {
                                     Text(
                                       '$_score/${typingTests.length}',
                                       style: GoogleFonts.figtree(
-                                        fontSize: 36,
+                                        fontSize: 32,
                                         fontWeight: FontWeight.w800,
                                         color: const Color(0xFF7A5A68),
                                       ),
@@ -272,19 +293,39 @@ class _TestPageState extends State<TestPage> {
                                     ),
                                   ],
                                 ),
-                                const SizedBox(width: 50),
+                                const SizedBox(width: 35),
                                 Column(
                                   children: [
                                     Text(
-                                      _formatTime(_elapsedSeconds),
+                                      _formatTime(_usedSeconds),
                                       style: GoogleFonts.figtree(
-                                        fontSize: 36,
+                                        fontSize: 32,
                                         fontWeight: FontWeight.w800,
                                         color: const Color(0xFF7A5A68),
                                       ),
                                     ),
                                     Text(
-                                      'min/sec',
+                                      'time used',
+                                      style: GoogleFonts.figtree(
+                                        fontSize: 14,
+                                        color: const Color(0xFF7A5A68),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(width: 35),
+                                Column(
+                                  children: [
+                                    Text(
+                                      wpm,
+                                      style: GoogleFonts.figtree(
+                                        fontSize: 32,
+                                        fontWeight: FontWeight.w800,
+                                        color: const Color(0xFF7A5A68),
+                                      ),
+                                    ),
+                                    Text(
+                                      'wpm',
                                       style: GoogleFonts.figtree(
                                         fontSize: 14,
                                         color: const Color(0xFF7A5A68),
@@ -294,9 +335,19 @@ class _TestPageState extends State<TestPage> {
                                 ),
                               ],
                             ),
-
+                            const SizedBox(height: 20),
+                            Center(
+                              child: Text(
+                                resultMessage,
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.figtree(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                  color: const Color(0xFF7A5A68),
+                                ),
+                              ),
+                            ),
                             const SizedBox(height: 30),
-
                             Center(
                               child: SizedBox(
                                 width: 90,
@@ -313,7 +364,7 @@ class _TestPageState extends State<TestPage> {
                                     ),
                                   ),
                                   child: Text(
-                                    'Back',
+                                    'BACK',
                                     style: GoogleFonts.figtree(
                                       fontSize: 18,
                                       fontWeight: FontWeight.w600,
@@ -330,7 +381,7 @@ class _TestPageState extends State<TestPage> {
                             Align(
                               alignment: Alignment.topCenter,
                               child: Text(
-                                'Test $testNumber: ${currentTest.level}\n${_formatTime(_elapsedSeconds)}',
+                                'Test $_currentTestNumber / ${typingTests.length}\n${currentTest.level} • ${_formatTime(_remainingSeconds)}',
                                 textAlign: TextAlign.center,
                                 style: GoogleFonts.figtree(
                                   fontSize: 24,
@@ -395,9 +446,9 @@ class _TestPageState extends State<TestPage> {
                                       vertical: 10,
                                     ),
                                   ),
-                                  child: const Text(
+                                  child: Text(
                                     'DONE',
-                                    style: TextStyle(
+                                    style: GoogleFonts.figtree(
                                       fontSize: 18,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -410,9 +461,9 @@ class _TestPageState extends State<TestPage> {
                               child: Text(
                                 resultMessage,
                                 textAlign: TextAlign.center,
-                                style: const TextStyle(
+                                style: GoogleFonts.figtree(
                                   fontSize: 16,
-                                  color: Color(0xFF7A5A68),
+                                  color: const Color(0xFF7A5A68),
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -434,9 +485,9 @@ class _TestPageState extends State<TestPage> {
                                       vertical: 12,
                                     ),
                                   ),
-                                  child: const Text(
+                                  child: Text(
                                     'END TEST',
-                                    style: TextStyle(
+                                    style: GoogleFonts.figtree(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,
                                     ),

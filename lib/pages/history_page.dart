@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../data/results_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../data/results_storage.dart';
 
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
@@ -38,14 +38,16 @@ class _HistoryPageState extends State<HistoryPage> {
       'November',
       'December',
     ];
+
     final hour = dt.hour > 12
         ? dt.hour - 12
         : dt.hour == 0
         ? 12
         : dt.hour;
     final minute = dt.minute.toString().padLeft(2, '0');
-    final period = dt.hour >= 12 ? 'pm' : 'am';
-    return '${months[dt.month - 1]} ${dt.day}, ${dt.year}  $hour:$minute$period';
+    final period = dt.hour >= 12 ? 'PM' : 'AM';
+
+    return '${months[dt.month - 1]} ${dt.day}, ${dt.year} • $hour:$minute $period';
   }
 
   String _formatTime(int totalSeconds) {
@@ -95,55 +97,78 @@ class _HistoryPageState extends State<HistoryPage> {
               ),
               const SizedBox(height: 10),
               Expanded(
-                child: ListView.builder(
-                  padding: EdgeInsets.zero,
-                  itemCount: _results.length,
-                  itemBuilder: (context, index) {
-                    final r = _results[index];
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  '${r.score}/${r.totalItems}',
-                                  style: GoogleFonts.figtree(
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.w800,
-                                    color: const Color(0xFF7A5A68),
-                                  ),
-                                ),
-                                Text(
-                                  _formatDateTime(r.dateTime),
-                                  style: GoogleFonts.figtree(
-                                    fontSize: 13,
-                                    color: const Color(0xFF7A5A68),
-                                  ),
-                                ),
-                              ],
+                child: _results.isEmpty
+                    ? Center(
+                        child: Text(
+                          'No test results yet.',
+                          style: GoogleFonts.figtree(
+                            fontSize: 16,
+                            color: const Color(0xFF7A5A68),
+                          ),
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: EdgeInsets.zero,
+                        itemCount: _results.length,
+                        itemBuilder: (context, index) {
+                          final r = _results[index];
+
+                          return Card(
+                            color: Colors.white.withOpacity(0.92),
+                            margin: const EdgeInsets.only(bottom: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
                             ),
-                            Text(
-                              _formatTime(r.elapsedSeconds),
-                              style: GoogleFonts.figtree(
-                                fontSize: 28,
-                                fontWeight: FontWeight.w800,
-                                color: const Color(0xFF7A5A68),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${r.score}/${r.totalItems}',
+                                    style: GoogleFonts.figtree(
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.w800,
+                                      color: const Color(0xFF7A5A68),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _formatDateTime(r.dateTime),
+                                    style: GoogleFonts.figtree(
+                                      fontSize: 13,
+                                      color: const Color(0xFF7A5A68),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        'Time: ${_formatTime(r.elapsedSeconds)}',
+                                        style: GoogleFonts.figtree(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                          color: const Color(0xFF7A5A68),
+                                        ),
+                                      ),
+                                      Text(
+                                        'WPM: ${r.wpm.toStringAsFixed(1)}',
+                                        style: GoogleFonts.figtree(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700,
+                                          color: const Color(0xFF7A5A68),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ),
                             ),
-                          ],
-                        ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
               ),
             ],
           ),
