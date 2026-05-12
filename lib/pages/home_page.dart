@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class HomePage extends StatelessWidget {
@@ -107,6 +108,45 @@ class HomePage extends StatelessWidget {
                                 fontSize: 20,
                                 fontWeight: FontWeight.w800,
                                 color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 18),
+
+                        SizedBox(
+                          width: 220,
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              await FirebaseAuth.instance.signOut();
+
+                              if (!context.mounted) return;
+                              Navigator.pushNamedAndRemoveUntil(
+                                context,
+                                '/',
+                                (route) => false,
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              elevation: 4,
+                              backgroundColor: Colors.white,
+                              foregroundColor: const Color(0xFF7A5A68),
+                              side: const BorderSide(
+                                color: Color(0xFFC98AA6),
+                                width: 4,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                            ),
+                            child: Text(
+                              'LOGOUT',
+                              style: GoogleFonts.figtree(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                                color: const Color(0xFF7A5A68),
                               ),
                             ),
                           ),

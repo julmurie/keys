@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "492695049068",
+    "project_id": "flutter-keys-cfffa",
+    "storage_bucket": "flutter-keys-cfffa.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:492695049068:android:ae8e6bf2302ec417881949",
+        "android_client_info": {
+          "package_name": "com.example.keys"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAwwQvHy3GM2RRcrGBgw57q7W7nwkNnThA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

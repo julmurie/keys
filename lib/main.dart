@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'pages/home_page.dart';
+import 'pages/login_page.dart';
+import 'pages/signup_page.dart';
 import 'pages/test_page.dart';
 import 'pages/history_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const KeysApp());
 }
 
@@ -19,7 +25,9 @@ class KeysApp extends StatelessWidget {
       theme: ThemeData(textTheme: GoogleFonts.figtreeTextTheme()),
       initialRoute: '/',
       routes: {
-        '/': (context) => const HomePage(),
+        '/': (context) => const LoginPage(),
+        '/signup': (context) => const SignupPage(),
+        '/home': (context) => const HomePage(),
         '/test': (context) => const TestPage(),
         '/history': (context) => const HistoryPage(),
       },
